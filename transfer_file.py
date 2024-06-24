@@ -1,40 +1,49 @@
 import paramiko
 import os
+from get_credential_ips import get_ips, get_username_and_password
+from paramiko_utils import get_ssh_client, transfer_file
+from csv_utils import ensure_n_csv_files
 
-def transfer_file(local_path, remote_path, ip_address, username, private_key):
-    sftp_client = None
-    ssh_client = None
-    try:
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+def transfer_jmx(local_path, remote_filename, ips, username, private_key):
+    for ip in ips:
+        ssh_client = get_ssh_client(ip=ip, username=username, pem_key_path=private_key)
+        transfer_file(ssh_client=ssh_client, local_path=local_path, filename=remote_filename)
 
-        private_key = paramiko.RSAKey.from_private_key_file(private_key)
-        ssh_client.connect(hostname=ip_address, username=username, pkey=private_key)
+def transfer_csvs(csv_dir, remote_filename, ips, username, private_key):
+    csv_file_paths = ensure_n_csv_files(csv_dir, len(ips))
 
-        sftp_client = ssh_client.open_sftp()
+    for csv_path, ip in zip(csv_file_paths, ips):
+        ssh_client = get_ssh_client(ip=ip, username=username, pem_key_path=private_key)
+        transfer_file(ssh_client=ssh_client, local_path=csv_path, filename=remote_filename)
 
-        try:
-            sftp_client.stat(remote_path)
-            print(f"File '{remote_path}' already exists on {ip_address}, replacing...")
-            sftp_client.remove(remote_path)  # Remove existing file
-        except FileNotFoundError:
-            pass
+def main(file_type):
+    local_jmx_path = r"D:\Magicbox-loadtesting\JMX_files\graph-questions-assessment.jmx"
+    remote_jmx_filename = "graph-questions-assessment.jmx"
+    local_csv_path = r"D:\Magicbox-loadtesting\CSVs\new_csvs"
+    remote_csv_filename = "updated_list_teacher1000.csv"
 
-        sftp_client.put(local_path, remote_path)
+    print("Please check the configurations before transferring:\n")
+    print(f"Local jmx path : {local_jmx_path}")
+    print(f"Local CSV dir : {local_csv_path}")
 
-        print(f"Successfully transferred {local_path} to {remote_path}")
+    print(f"Remote jmx name :{remote_jmx_filename}")
+    print(f"Remote jmx name :{remote_csv_filename}")
+    print(f"Enter Y/y to continue ....")
+    conf = input()
+    if conf == "Y" or conf == "y":
+        ips = get_ips()
+        credentials = get_username_and_password()
+        if file_type == "JMX":
+            transfer_jmx(local_jmx_path, remote_jmx_filename, ips, credentials['username'], credentials['pem'])
 
-    except Exception as e:
-        print(f"Error: {e}")
+        if file_type == "CSV":
+            transfer_csvs(local_csv_path, remote_csv_filename, ips, credentials['username'], credentials['pem'])
 
-def main():
-    local_path = r"D:\Magicbox-loadtesting\JMX_files\BJU_consolidated_scenarios.jmx"
-    remote_path = "/loadtesting/jmeter/apache-jmeter/bin/BJU_consolidated_scenarios.jmx"
-    ip_address = "10.30.0.201"
-    username = "ubuntu"
-    private_key = r"D:\Magicbox-loadtesting\magicbox-qc-prod.ppk"
+        if file_type == "Both":
+            transfer_jmx(local_jmx_path, remote_jmx_filename, ips, credentials['username'], credentials['pem'])
+            transfer_csvs(local_csv_path, remote_csv_filename, ips, credentials['username'], credentials['pem'])
 
-    transfer_file(local_path, remote_path, ip_address, username, private_key)
 
-if __name__ == "__main__":
-    main()
+
+# if __name__ == "__main__":
+#     main()

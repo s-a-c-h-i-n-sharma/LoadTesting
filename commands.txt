@@ -1,1 +1,3 @@
-cd /loadtesting/jmeter/apache-jmeter/bin && ls -l
+echo Y | cd loadtesting/jmeter/apache-jmeter/bin && 
+
+exec bash

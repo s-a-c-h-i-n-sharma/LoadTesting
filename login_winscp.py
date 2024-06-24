@@ -1,19 +1,6 @@
 import subprocess
 import time
-
-
-def get_ips(filename):
-    with open(filename, 'r') as file:
-        return [line.strip() for line in file.readlines()]
-
-
-def get_username_and_keyfile(filename):
-    with open(filename, 'r') as file:
-        credentials = file.readlines()
-        if len(credentials) < 2:
-            raise ValueError(
-                "The credentials file must contain at least two lines: one for username and one for the path to the private key file.")
-        return credentials[0].strip(), credentials[1].strip()
+from get_credential_ips import get_ips, get_username_and_password
 
 
 def open_winscp(ip, username, keyfile):
@@ -21,7 +8,7 @@ def open_winscp(ip, username, keyfile):
         # Construct the command for WinSCP
         command = [
             'C:\\Program Files (x86)\\WinSCP\\WinSCP.exe',  # Full path to WinSCP.exe
-            f'sftp://{username}@{ip}/',
+            f'sftp://{username}@{ip}',
             f'/privatekey="{keyfile}"',
             '/ini=nul',  # Do not load any stored configuration
             '/log=winscp.log',  # Log session details (optional)
@@ -37,18 +24,12 @@ def open_winscp(ip, username, keyfile):
 
 
 def main():
-    ip_file = 'ips.txt'  # File containing IP addresses, one per line
-    credentials_file = 'credentials.txt'  # File containing username on the first line and private key file path on the second line
+    ips = get_ips()
+    credentials = get_username_and_password()
 
-    # Get the list of IPs and credentials
-    ips = get_ips(ip_file)
-    username, keyfile = get_username_and_keyfile(credentials_file)
-
-    # Iterate over each IP and open WinSCP
     for ip in ips:
-        open_winscp(ip, username, keyfile)
-        time.sleep(1)  # Small delay to avoid issues with opening too many sessions at once
+        open_winscp(ip, credentials['username'], credentials['ppk'])
+        time.sleep(1)
 
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
